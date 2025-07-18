@@ -27,7 +27,7 @@ def get_scores():
 
 @app.route('/hsml_representation', methods=['GET'])
 def hsml_representation():
-    # Represent the routes in HSML-like JSON format
+    # Represent the routes in HSML-like JSON format using actual coordinates
     hsml_json = {
         "version": "1.0",
         "routes": [
@@ -43,13 +43,7 @@ def hsml_representation():
                     },
                     "outputs": {
                         "message": "string",
-                        "coords": [
-                            {
-                                "x": "number",
-                                "y": "number",
-                                "z": "number"
-                            }
-                        ]
+                        "coords": coords  # Actual saved coordinates
                     },
                     "logic": {
                         "debug": "print_received_data",
@@ -64,39 +58,26 @@ def hsml_representation():
                 "handler": {
                     "action": "get_scores",
                     "outputs": {
-                        "coords": [
-                            {
-                                "x": "number",
-                                "y": "number",
-                                "z": "number"
-                            }
-                        ]
+                        "coords": sorted(coords, key=lambda x: (x['x'], x['y'], x['z']), reverse=True)
                     },
                     "logic": {
                         "sort_coords": {
                             "key": ["x", "y", "z"],
-                            "reverse": true
+                            "reverse": True
                         }
                     }
                 }
             }
         ],
         "database": {
-            "coords": [
-                {
-                    "x": "number",
-                    "y": "number",
-                    "z": "number"
-                }
-            ]
+            "coords": coords  # Include actual saved coords here too
         },
         "metadata": {
             "description": "API for saving and retrieving coordinates with sorting functionality.",
             "debug_enabled": True
         }
     }
-    
-    # Return the HSML-like JSON as a response
+
     return jsonify(hsml_json)
 
 if __name__ == '__main__':

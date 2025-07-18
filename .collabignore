@@ -1,33 +1,54 @@
-# ===========================
-# Default Collab Ignore Rules
-# ===========================
+# User-specific files
+UserSettings/
 
-# OS Generated
-# ============
-.DS_Store
-._*
-.Spotlight-V100
-.Trashes
-Icon?
-ehthumbs.db
-[Tt]humbs.db
-[Dd]esktop.ini
-
-# Visual Studio / MonoDevelop generated
-# =====================================
-[Ee]xported[Oo]bj/
-*.userprefs
-*.csproj
-*.pidb
-*.suo
-*.sln
-*.user
-*.unityproj
-*.booproj
-
-# Unity generated
-# ===============
-[Oo]bj/
-[Bb]uild
-sysinfo.txt
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Dd]istro/
+[Ll]og/
+[Ll]ibrary/
+[Tt]emp/
+[Tt]argets/
 *.stackdump
+
+# Uncomment if you have a file that includes a workspace-specific solution file
+# .vs/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows Installer files
+*.apk
+*.aab
+
+# macOS Finder
+.DS_Store
+
+# Windows thumbnail cache files
+Thumbs.db
+
+# Windows Installer files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# JetBrains Rider IDE files
+.idea/
+
+# Unity-generated files
+Library/
+Temp/
+Obj/
+Build/
+Builds/
+UserSettings/
+
+# Unity-specific files
+*.csproj
+*.unityproj
+*.sln
+*.tmp

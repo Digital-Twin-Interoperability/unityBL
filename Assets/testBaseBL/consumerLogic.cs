@@ -4,17 +4,16 @@ using System.Collections.Generic;
 
 public class consumerLogic : MonoBehaviour
 {
-    private GameObject targetObject;
+    [SerializeField] private GameObject targetObject; // Direct GameObject reference
     private bool connected = false;
-
-    [SerializeField] private string objectPath = "Rover"; // Unity GameObject name
 
     void Start()
     {
-        if (ConnectToUnityObject(objectPath))
+        if (ConnectToUnityObject())
         {
-            Debug.Log("Connected to Unity object.");
-            // Example HSML data
+            Debug.Log("Connected to Unity object: " + targetObject.name);
+
+            // Example HSML data - this would normally come from Kafka
             Dictionary<string, object> hsmlData = new Dictionary<string, object>
             {
                 { "entity_id", "test_unity_agent" },
@@ -27,24 +26,60 @@ public class consumerLogic : MonoBehaviour
         }
         else
         {
-            Debug.LogError("Could not find target object.");
+            Debug.LogError("Target object is not assigned in the inspector!");
         }
     }
 
-    public bool ConnectToUnityObject(string path)
+    public bool ConnectToUnityObject()
     {
-        targetObject = GameObject.Find(path);
         connected = targetObject != null;
         return connected;
     }
 
+    // Optional: method to set target object at runtime
+    public void SetTargetObject(GameObject newTarget)
+    {
+        targetObject = newTarget;
+        connected = targetObject != null;
+
+        if (connected)
+        {
+            Debug.Log("Target object updated to: " + targetObject.name);
+        }
+    }
+
     public void ProcessHsmlMovement(Dictionary<string, object> hsmlData)
     {
-        if (!connected)
+        if (!connected || targetObject == null)
         {
-            Debug.LogError("Not connected to Unity object.");
+            Debug.LogError("Not connected to Unity object or target object is null.");
             return;
         }
+
+        // Send movement command to cross-platform topic
+        var movementCommand = new
+        {
+            command_type = "move_to_position",
+            platform = "unity",
+            target_entity = hsmlData["entity_id"].ToString(),
+            hsml_data = hsmlData,
+            timestamp = System.DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ")
+        };
+
+        KafkaProducer.Instance.SendToTopic("movement-commands",
+            hsmlData["entity_id"].ToString(),
+            movementCommand);
+
+        // Send HSML data to standardized topic
+        KafkaProducer.Instance.SendToTopic("hsml-data",
+            hsmlData["entity_id"].ToString(),
+            hsmlData);
+
+        // Convert to Omniverse format and send to sync topic
+        var omniverseData = PluginLogic.HsmlToOmniverse(hsmlData);
+        KafkaProducer.Instance.SendToTopic("scene-sync",
+            omniverseData["id"].ToString(),
+            omniverseData);
 
         var transformData = ConvertHsmlToUnityTransform(hsmlData);
         MoveObject(transformData);
@@ -73,7 +108,28 @@ public class consumerLogic : MonoBehaviour
 
     private void MoveObject((Vector3 position, Quaternion rotation) transformData)
     {
-        targetObject.transform.SetPositionAndRotation(transformData.position, transformData.rotation);
-        Debug.Log($"Moved object to Position: {transformData.position}, Rotation: {transformData.rotation}");
+        if (targetObject != null)
+        {
+            targetObject.transform.SetPositionAndRotation(transformData.position, transformData.rotation);
+            Debug.Log($"Moved {targetObject.name} to Position: {transformData.position}, Rotation: {transformData.rotation}");
+        }
+        else
+        {
+            Debug.LogError("Cannot move object: targetObject is null");
+        }
+    }
+
+    // Optional: Validation method you can call from inspector or other scripts
+    [ContextMenu("Validate Target Object")]
+    public void ValidateTargetObject()
+    {
+        if (targetObject == null)
+        {
+            Debug.LogWarning("Target object is not assigned!");
+        }
+        else
+        {
+            Debug.Log($"Target object is assigned: {targetObject.name}");
+        }
     }
 }

@@ -5,18 +5,55 @@ using System.Text;
 
 public class HsmlPositionSender : MonoBehaviour
 {
+    [System.Serializable]
+    public class PositionPayload
+    {
+        public float x, y, z;
+
+        public PositionPayload(Vector3 position)
+        {
+            x = position.x;
+            y = position.y;
+            z = position.z;
+        }
+    }
+
+    [Header("Settings")]
+    public float sendInterval = 2.0f;
+    public bool useKafka = true;
+    public bool useHTTP = false;
+
+    [Header("Legacy HTTP Settings")]
     public string apiUrl = "http://localhost:5000/save_score";
 
     void Start()
     {
-        StartCoroutine(SendPosition());
+        StartCoroutine(SendPositionPeriodically());
     }
 
-    IEnumerator SendPosition()
+    IEnumerator SendPositionPeriodically()
+    {
+        while (true)
+        {
+            if (useKafka)
+            {
+                var hsmlData = OmniverseProducerUtil.ConvertUnityToHsml(gameObject);
+                KafkaProducer.Instance.SendToTopic("hsml-data", gameObject.name, hsmlData);
+            }
+
+            if (useHTTP)
+            {
+                yield return StartCoroutine(SendPositionHTTP());
+            }
+
+            yield return new WaitForSeconds(sendInterval);
+        }
+    }
+
+    IEnumerator SendPositionHTTP()
     {
         Vector3 position = transform.position;
         PositionPayload payload = new PositionPayload(position);
-
         string json = JsonUtility.ToJson(payload);
 
         UnityWebRequest request = new UnityWebRequest(apiUrl, "POST");
@@ -29,11 +66,11 @@ public class HsmlPositionSender : MonoBehaviour
 
         if (request.result == UnityWebRequest.Result.Success)
         {
-            Debug.Log("Position sent successfully!");
+            Debug.Log("HSML Position sent via HTTP successfully!");
         }
         else
         {
-            Debug.LogError("Error sending position: " + request.error);
+            Debug.LogError("Error sending HSML position via HTTP: " + request.error);
         }
     }
 }

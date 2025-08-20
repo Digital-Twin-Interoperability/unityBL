@@ -10,7 +10,7 @@ public class producer : MonoBehaviour
     public string apiUrl = "http://localhost:5000/save_score"; // Keep for backwards compatibility
 
     [Header("Kafka Settings")]
-    public float sendInterval = 1.0f; // Send position updates every second
+    public float sendInterval = 0.5f; // Send position updates every second
     public bool useKafka = true;
     public bool useHTTP = false; // Disable HTTP by default
 
@@ -34,9 +34,9 @@ public class producer : MonoBehaviour
                     { "entity_id", gameObject.name },
                     { "position", new Dictionary<string, object>
                         {
-                            { "x", pos.x },
-                            { "y", pos.y },
-                            { "z", pos.z }
+                            { "x", pos.x*100f },
+                            { "y", pos.y*100f },
+                            { "z", pos.z*100f }
                         }
                     },
                     { "rotation", new Dictionary<string, object>
@@ -54,6 +54,13 @@ public class producer : MonoBehaviour
                 // HSML-standardized format
                 var hsmlData = OmniverseProducerUtil.ConvertUnityToHsml(gameObject);
                 KafkaProducer.Instance.SendToTopic("hsml-data", gameObject.name, hsmlData);
+
+
+                // Add debug here:
+                Debug.Log("About to send HSML data...");
+                var hsmlData1 = OmniverseProducerUtil.ConvertUnityToHsml(gameObject);
+                Debug.Log("HSML data created: " + hsmlData1);
+                KafkaProducer.Instance.SendToTopic("hsml-data", gameObject.name, hsmlData1);
             }
 
             if (useHTTP)

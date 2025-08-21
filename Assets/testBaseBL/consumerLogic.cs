@@ -6,33 +6,14 @@ using System.Collections.Generic;
 public class consumerLogic : MonoBehaviour
 {
     [SerializeField] private GameObject targetObject; // Direct GameObject reference
-    [SerializeField] private string targetEntityId = ""; 
+    [SerializeField] private string targetEntityId = "";
     private bool connected = false;
-    private Rigidbody targetRigidbody; // Cache the rigidbody component
 
     void Start()
     {
         if (ConnectToUnityObject())
         {
             Debug.Log("Connected to Unity object: " + targetObject.name);
-
-            // Cache the Rigidbody component
-            if (targetObject != null)
-            {
-                targetRigidbody = targetObject.GetComponent<Rigidbody>();
-                if (targetRigidbody == null)
-                {
-                    Debug.LogError($"Target object '{targetObject.name}' does not have a Rigidbody component! Physics movement will not work.");
-                }
-                else
-                {
-                    // Ensure proper physics settings
-                    targetRigidbody.isKinematic = false;
-                    targetRigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-                    Debug.Log("Rigidbody configured for physics-based movement");
-                }
-            }
-
             RegisterWithKafkaConsumer();
         }
         else
@@ -125,16 +106,10 @@ public class consumerLogic : MonoBehaviour
         if (connected)
         {
             Debug.Log("Target object updated to: " + targetObject.name);
-            // Update cached rigidbody reference
-            targetRigidbody = targetObject.GetComponent<Rigidbody>();
-            if (targetRigidbody == null)
-            {
-                Debug.LogError($"New target object '{targetObject.name}' does not have a Rigidbody component!");
-            }
         }
     }
 
-    // Updated serializable classes to match JSON structure
+    // Updated serializable classes to match your JSON structure
     [System.Serializable]
     public class KafkaMessageWrapper
     {
@@ -214,8 +189,8 @@ public class consumerLogic : MonoBehaviour
         // Convert Omniverse coordinates to Unity coordinates
         var transformData = ConvertOmniverseToUnityTransform(omniverseData);
 
-        // Move the object using physics
-        MoveObjectPhysics(transformData);
+        // Move the object
+        MoveObject(transformData);
 
         Debug.Log($"Moved {targetObject.name} to Position: {transformData.position}, Rotation: {transformData.rotation}");
     }
@@ -235,11 +210,11 @@ public class consumerLogic : MonoBehaviour
                 // - Apply X offset of -90
                 // - Apply Y offset of +110
                 position = new Vector3(
-                    omniverseData.position.x / 100f,    // X with -90 offset
+                    -omniverseData.position.y/100f,    // X with -90 offset
                     0,   // Y becomes Z with +110 offset
-                    omniverseData.position.y / 100f           // Z becomes Y (switched)
+                    -omniverseData.position.x/100f           // Z becomes Y (switched)
                 );
-
+                
                 Debug.Log($"Original position: ({omniverseData.position.x}, {omniverseData.position.y}, {omniverseData.position.z})");
                 Debug.Log($"Transformed position: {position}");
             }
@@ -252,10 +227,10 @@ public class consumerLogic : MonoBehaviour
             if (omniverseData.rotation != null)
             {
                 rotation = new Quaternion(
-                    omniverseData.rotation.x + 90f,
+                    omniverseData.rotation.x+90f,
                     omniverseData.rotation.y,
                     omniverseData.rotation.z,
-                    omniverseData.rotation.w - 90f
+                    omniverseData.rotation.w-90f
                 );
                 Debug.Log($"Extracted rotation: {rotation}");
             }
@@ -272,36 +247,11 @@ public class consumerLogic : MonoBehaviour
         return (position, rotation);
     }
 
-    // NEW: Physics-based movement method
-    private void MoveObjectPhysics((Vector3 position, Quaternion rotation) transformData)
+    private void MoveObject((Vector3 position, Quaternion rotation) transformData)
     {
-        if (targetObject == null)
-        {
-            Debug.LogError("Cannot move object: targetObject is null");
-            return;
-        }
-
-        if (targetRigidbody == null)
-        {
-            Debug.LogError("Cannot move object: targetObject does not have a Rigidbody component");
-            return;
-        }
-
-        // Use physics-based movement that respects collisions
-        targetRigidbody.MovePosition(transformData.position);
-        targetRigidbody.MoveRotation(transformData.rotation);
-
-        Debug.Log($"Successfully applied physics-based transform - Position: {transformData.position}, Rotation: {transformData.rotation}");
-    }
-
-    // Old method kept for reference but not used
-    /*private void MoveObject((Vector3 position, Quaternion rotation) transformData)
-    {
-        Debug.LogWarning("MoveObject() is deprecated - use MoveObjectPhysics() instead for collision detection");
-
         if (targetObject != null)
         {
-            // This bypasses physics and causes objects to pass through each other
+            // Apply the position and rotation directly
             targetObject.transform.position = transformData.position;
             targetObject.transform.rotation = transformData.rotation;
 
@@ -311,7 +261,7 @@ public class consumerLogic : MonoBehaviour
         {
             Debug.LogError("Cannot move object: targetObject is null");
         }
-    }*/
+    }
 
     // Testing and validation methods
     [ContextMenu("Validate Target Object")]
@@ -326,20 +276,6 @@ public class consumerLogic : MonoBehaviour
             Debug.Log($"Target object is assigned: {targetObject.name}");
             Debug.Log($"Looking for entity_id: {targetEntityId}");
             Debug.Log($"Connected status: {connected}");
-
-            // Validate physics components
-            Rigidbody rb = targetObject.GetComponent<Rigidbody>();
-            Collider col = targetObject.GetComponent<Collider>();
-
-            if (rb == null)
-                Debug.LogError("Target object is missing Rigidbody component!");
-            else
-                Debug.Log($"Rigidbody found - IsKinematic: {rb.isKinematic}, CollisionDetection: {rb.collisionDetectionMode}");
-
-            if (col == null)
-                Debug.LogError("Target object is missing Collider component!");
-            else
-                Debug.Log($"Collider found - Type: {col.GetType().Name}, IsTrigger: {col.isTrigger}");
         }
     }
 
